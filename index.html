@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ja-JP">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Language" content="ja-JP">
+  <meta name="theme-color" content="#087a70">
+  <title>ネットスーパー配送配分・重量チェッカー</title>
+  <style>
+    :root { --ink:#172033; --muted:#64748b; --line:#dce3eb; --paper:#fff; --canvas:#f4f6f4; --teal:#087a70; --teal-dark:#045c55; --teal-pale:#e5f5f2; --orange:#ca5c28; --orange-pale:#fff0e8; --red:#ba3434; --shadow:0 10px 28px rgba(23,32,51,.08); }
+    * { box-sizing:border-box; }
+    body { margin:0; min-width:320px; background:var(--canvas); color:var(--ink); font-family:"Hiragino Sans","Yu Gothic","Noto Sans JP",sans-serif; }
+    button,input { font:inherit; } button { cursor:pointer; } button:focus-visible,input:focus-visible { outline:3px solid rgba(8,122,112,.28); outline-offset:2px; }
+    .shell { max-width:1120px; margin:0 auto; padding:26px 20px 48px; }
+    header { display:flex; justify-content:space-between; gap:20px; align-items:end; margin-bottom:22px; }
+    .eyebrow { margin:0 0 5px; color:var(--teal); font-size:.72rem; font-weight:800; letter-spacing:.08em; }
+    h1 { margin:0; font-family:Georgia,"Yu Mincho",serif; font-size:clamp(1.5rem,3.2vw,2.25rem); }
+    .origin { margin:0; color:var(--muted); text-align:right; font-size:.78rem; line-height:1.7; }
+    .origin strong { color:var(--teal-dark); }
+    .grid { display:grid; grid-template-columns:minmax(0,1.12fr) minmax(330px,.88fr); gap:20px; align-items:start; }
+    .panel { background:var(--paper); border:1px solid var(--line); border-radius:8px; box-shadow:var(--shadow); }
+    .heading { display:flex; justify-content:space-between; gap:12px; align-items:baseline; padding:17px 18px 13px; border-bottom:1px solid var(--line); }
+    h2 { margin:0; font-size:1rem; } .small { color:var(--muted); font-size:.74rem; }
+    .input-block { padding:17px 18px; background:linear-gradient(130deg,#f4fcfa,#fff 70%); }
+    label { display:block; margin-bottom:6px; color:var(--muted); font-size:.76rem; font-weight:700; }
+    .input-row { display:grid; grid-template-columns:1fr auto auto; gap:7px; }
+    .service-select { width:100%; min-height:40px; margin:0 0 13px; padding:8px 10px; border:1px solid #bfcbd3; border-radius:5px; background:#fff; color:var(--ink); font-weight:800; }
+    input { width:100%; min-height:44px; padding:9px 11px; border:1px solid #bfcbd3; border-radius:5px; color:var(--ink); }
+    .button { min-height:44px; padding:8px 12px; border:1px solid transparent; border-radius:5px; font-size:.83rem; font-weight:800; white-space:nowrap; }
+    .primary { background:var(--teal); color:#fff; } .primary:hover { background:var(--teal-dark); }
+    .voice { min-width:44px; background:var(--orange-pale); color:var(--orange); border-color:#efbea7; }
+    .voice.listening { background:var(--orange); color:#fff; animation:pulse 1.2s infinite; }
+    .voice:disabled { opacity:.55; cursor:not-allowed; }
+    .hint,.status { margin:9px 0 0; color:var(--muted); font-size:.72rem; line-height:1.6; }
+    .examples { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+    .example { padding:4px 7px; border:1px solid #b8dbd5; border-radius:999px; background:#fff; color:var(--teal-dark); font-size:.7rem; font-weight:700; }
+    .example:hover { background:var(--teal-pale); }
+    .list { padding:8px 12px 12px; } .empty { padding:29px 14px; color:var(--muted); text-align:center; font-size:.83rem; line-height:1.7; }
+    .delivery { padding:12px 8px; border-bottom:1px solid #edf0f3; } .delivery:last-child { border-bottom:0; }
+    .delivery-top { display:flex; justify-content:space-between; gap:12px; align-items:start; }
+    .place { font-size:.93rem; font-weight:800; } .place small { margin-left:5px; color:var(--teal); font-size:.68rem; }
+    .raw { display:block; margin-top:3px; color:var(--muted); font-size:.69rem; }
+    .delete { width:29px; height:29px; padding:0; border:0; border-radius:4px; background:transparent; color:#a44a29; font-size:1.22rem; line-height:1; }
+    .delete:hover { background:var(--orange-pale); }
+    .cargo { margin-top:8px; padding:7px 8px; border-radius:4px; background:#f4f7f8; color:#43516a; font-size:.74rem; line-height:1.55; }
+    .scores { margin:7px 0 0; color:var(--teal-dark); font-size:.73rem; font-weight:800; font-variant-numeric:tabular-nums; }
+    .actions { display:flex; justify-content:flex-end; padding:12px 18px; border-top:1px solid var(--line); } .link-button { padding:2px; border:0; background:none; color:var(--muted); font-size:.74rem; text-decoration:underline; text-underline-offset:3px; }
+    .allocation { position:sticky; top:16px; overflow:hidden; } .summary { display:grid; grid-template-columns:1fr 1fr; background:var(--line); gap:1px; }
+    .metric { padding:15px 18px; background:#fff; } .metric span { display:block; color:var(--muted); font-size:.7rem; font-weight:700; } .metric strong { display:block; margin-top:3px; font-size:1.48rem; font-variant-numeric:tabular-nums; } .metric small { font-size:.72rem; }
+    .drivers { padding:12px; }.driver { padding:12px; border:1px solid var(--line); border-left:5px solid var(--driver); border-radius:5px; }.driver+.driver { margin-top:9px; }
+    .driver-head { display:flex; justify-content:space-between; gap:10px; align-items:baseline; }.driver-name { font-size:.86rem; font-weight:800; }.driver-points { color:var(--driver); font-size:1rem; font-weight:900; font-variant-numeric:tabular-nums; }
+    .weight { margin-top:4px; font-size:.75rem; font-weight:800; }.weight.ok { color:#28814b; }.weight.warn { color:#ad7200; }.weight.danger { color:var(--red); }
+    .route { display:flex; flex-wrap:wrap; gap:5px; margin:9px 0 0; padding:0; list-style:none; }.route li { padding:3px 5px; border-radius:3px; background:#f1f4f5; font-size:.7rem; }.route .none { padding-left:0; background:transparent; color:var(--muted); }
+    .note { margin:0; padding:0 18px 17px; color:var(--muted); font-size:.7rem; line-height:1.55; }
+    .manual-button { width:100%; min-height:38px; padding:8px; border:1px solid #a6cdc7; border-radius:5px; background:#fff; color:var(--teal-dark); font-size:.78rem; font-weight:800; }
+    .schedule { margin-top:20px; overflow:hidden; }.schedule-wrap { overflow-x:auto; }.schedule table { width:100%; border-collapse:collapse; min-width:620px; font-size:.75rem; }.schedule th,.schedule td { padding:10px 12px; border-bottom:1px solid var(--line); text-align:left; white-space:nowrap; }.schedule th { background:#f1f7f6; color:var(--teal-dark); font-size:.7rem; }.schedule td:first-child { font-weight:800; }.schedule .alert { color:var(--red); font-weight:800; }.schedule-note { margin:0; padding:12px 18px; color:var(--muted); font-size:.7rem; }
+    dialog { width:min(560px,calc(100% - 28px)); max-height:82vh; padding:0; border:0; border-radius:8px; box-shadow:0 20px 60px rgba(0,0,0,.28); color:var(--ink); } dialog::backdrop { background:rgba(18,29,42,.48); }
+    .manual { padding:20px; }.manual header { align-items:start; margin-bottom:15px; }.manual h2 { font-size:1.12rem; }.manual h3 { margin:17px 0 6px; font-size:.88rem; }.manual p,.manual li { font-size:.78rem; line-height:1.65; }.manual ol,.manual ul { padding-left:18px; }.close { width:34px; height:34px; padding:0; border:0; border-radius:4px; background:#f2f5f6; color:var(--muted); font-size:1.1rem; }.manual table { width:100%; border-collapse:collapse; font-size:.72rem; }.manual th,.manual td { padding:6px; border:1px solid var(--line); text-align:left; }.manual th { background:var(--teal-pale); color:var(--teal-dark); }
+    @keyframes pulse { 50% { opacity:.62; } }
+    @media(max-width:780px) { .shell { padding:18px 14px 32px; } header { align-items:start; flex-direction:column; margin-bottom:16px; }.origin { text-align:left; }.grid { grid-template-columns:1fr; gap:15px; }.allocation { position:static; } }
+    @media(max-width:430px) { .input-row { grid-template-columns:1fr auto; }.voice { grid-column:2; grid-row:1; }.primary { grid-column:1; grid-row:2; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div><p class="eyebrow">NET SUPERMARKET DELIVERY DESK</p><h1>配送配分・重量チェッカー</h1></div>
+      <p class="origin"><strong>店舗起点: ベイシアなめがわモール店</strong><br>埼玉県比企郡滑川町羽尾2780<br><span id="appTime">日本時間を読み込み中...</span></p>
+    </header>
+    <div class="grid">
+      <section class="panel" aria-labelledby="inputTitle">
+        <div class="heading"><h2 id="inputTitle">配送先・荷物の入力</h2><span id="deliveryCount" class="small">0 件</span></div>
+        <div class="input-block">
+          <label for="serviceSelect">対象便</label>
+          <select id="serviceSelect" class="service-select" aria-label="対象便"><option value="10時便">10時便</option><option value="12時便">12時便</option><option value="14時便">14時便</option><option value="16時便">16時便</option><option value="18時便">18時便</option></select>
+          <label for="deliveryInput">住所と荷物をまとめて入力</label>
+          <div class="input-row"><input id="deliveryInput" type="text" autocomplete="off" placeholder="例: 野球町、水ケース2個、クーラー大1個"><button id="addButton" class="button primary" type="button">解析して追加</button><button id="micButton" class="button voice" type="button" title="音声入力" aria-label="音声入力">音声</button></div>
+          <p class="hint">配送先ごとに追加してください。荷物が未入力でも、距離ポイントだけで配分できます。</p>
+          <div class="examples"><button class="example" type="button" data-example="野球町、水ケース2個、クーラー大1個">野球町 + 水2 + クーラー大</button><button class="example" type="button" data-example="高坂、コンテナ小3個">高坂 + コンテナ小3</button><button class="example" type="button" data-example="はねお、飲料ケース1個">はねお + 飲料1</button></div>
+          <p id="status" class="status" aria-live="polite"></p>
+        </div>
+        <div id="deliveryList" class="list"></div>
+        <div class="actions"><button id="clearButton" class="link-button" type="button">すべて消去</button></div>
+      </section>
+      <aside class="panel allocation" aria-labelledby="allocationTitle">
+        <div class="heading"><h2 id="allocationTitle">ドライバー別の配分</h2><span class="small">350kg 上限</span></div>
+        <div class="summary"><div class="metric"><span>総ポイント</span><strong id="totalPoints">0.0 <small>pt</small></strong></div><div class="metric"><span>総重量</span><strong id="totalWeight">0.0 <small>kg</small></strong></div></div>
+        <div id="drivers" class="drivers"></div>
+        <p class="note">重い配送先を優先し、ポイントと重量が少ない担当者へ順に割り当てます。350kg超過は赤字で警告します。</p>
+        <div class="actions"><button id="manualButton" class="manual-button" type="button">運用マニュアル</button></div>
+      </aside>
+    </div>
+    <section class="panel schedule" aria-labelledby="scheduleTitle">
+      <div class="heading"><h2 id="scheduleTitle">便別 稼働記録</h2><span class="small">このブラウザに自動保存</span></div>
+      <div class="schedule-wrap"><table><thead><tr><th>便</th><th>件数</th><th>総ポイント</th><th>総重量</th><th>ドライバー A</th><th>ドライバー B</th><th>状態</th></tr></thead><tbody id="scheduleBody"></tbody></table></div>
+      <p class="schedule-note">入力内容は便ごとに保存され、ページを再読み込みしても復元されます。</p>
+    </section>
+  </main>
+  <dialog id="manualDialog"><div class="manual"><header><div><p class="eyebrow">OPERATION MANUAL</p><h2>現場運用マニュアル</h2></div><button id="closeManual" class="close" type="button" aria-label="閉じる">×</button></header><h3>基本手順</h3><ol><li>便の締め切り後、配送先ごとに「地名＋荷物の種類と数」を入力または音声入力します。</li><li>補正された地名、ポイント、推定重量を確認します。</li><li>担当別の重量が350kg未満であることを確認して積載します。</li></ol><h3>ポイント・重量の目安</h3><table><tr><th>項目</th><th>ポイント</th><th>推定重量</th></tr><tr><td>近場 / 中距離 / 遠方</td><td>1.0 / 1.5 / 2.0 pt</td><td>距離のみ</td></tr><tr><td>飲料・水ケース</td><td>2.0 pt</td><td>13.0 kg / 個</td></tr><tr><td>クーラー大 / 小</td><td>1.5 / 0.8 pt</td><td>9.0 / 4.5 kg / 個</td></tr><tr><td>コンテナ大 / 小</td><td>1.0 / 0.5 pt</td><td>6.5 / 3.0 kg / 個</td></tr></table><h3>注意</h3><p>過積載の警告が出た場合は、該当配送先を別の車両へ振り替えてください。重量は荷物マスタに基づく推定値です。</p></div></dialog>
+  <script>
+    const LOCALE='ja-JP', TIME_ZONE='Asia/Tokyo', WEIGHT_LIMIT=350;
+    const LOCATIONS=[
+      {name:'箭弓町',aliases:['箭弓町','野球町','野球','やきゅうちょう','矢弓'],pt:1.5},{name:'御茶山町',aliases:['御茶山町','御茶山','お茶山','おちゃやま'],pt:1.5},{name:'松葉町',aliases:['松葉町','松葉','まつばちょう'],pt:1.5},{name:'神明町',aliases:['神明町','神明','しんめいちょう'],pt:1.5},{name:'本町',aliases:['本町','ほんちょう'],pt:1.5},{name:'加美町',aliases:['加美町','加美','かみちょう'],pt:1.5},{name:'市野川',aliases:['市野川','市川','いちのかわ'],pt:1.5},
+      {name:'毛塚',aliases:['毛塚','気塚','木塚','けづか'],pt:2},{name:'高坂',aliases:['高坂','たかさか'],pt:2},{name:'西本宿',aliases:['西本宿','本宿','にしほんじゅく'],pt:2},{name:'元宿',aliases:['元宿','もとじゅく'],pt:2},{name:'菅谷',aliases:['菅谷','菅矢','すがや'],pt:2},{name:'むさし台',aliases:['むさし台','武蔵台','むさしだい'],pt:2},{name:'志賀',aliases:['志賀','四日','しか'],pt:2},{name:'越畑',aliases:['越畑','腰畑','こしはた'],pt:2},
+      {name:'羽尾',aliases:['羽尾','羽根尾','羽男','はねお','はねを'],pt:1},{name:'月輪',aliases:['月輪','月の輪','つきのわ'],pt:1},{name:'みなみ野',aliases:['みなみ野','南野','みなみの'],pt:1},{name:'福田',aliases:['福田','ふくだ'],pt:1},{name:'山田',aliases:['山田','やまだ'],pt:1},{name:'古氷',aliases:['古氷','フルゴオリ','ふるごおり'],pt:1}
+    ];
+    const CARGO=[
+      {label:'飲料ケース',terms:['水ケース','飲料ケース','水','飲料','ドリンク','お茶'],pt:2,weight:13},{label:'クーラー大',terms:['クーラー大','クーラーボックス大','保冷大'],pt:1.5,weight:9},{label:'クーラー小',terms:['クーラー小','クーラーボックス小','保冷小'],pt:.8,weight:4.5},{label:'コンテナ大',terms:['コンテナ大','コンテナボックス大','箱大'],pt:1,weight:6.5},{label:'コンテナ小',terms:['コンテナ小','コンテナボックス小','箱小','コンテナ'],pt:.5,weight:3}
+    ];
+    const colors=['#087a70','#ca5c28'], SERVICE_SLOTS=['10時便','12時便','14時便','16時便','18時便'], STORAGE_KEY='namagawa-delivery-records-v1';
+    let records=JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}');
+    let activeSlot='10時便';
+    let deliveries=records[activeSlot]||[];
+    const input=document.getElementById('deliveryInput'),status=document.getElementById('status'),list=document.getElementById('deliveryList'),serviceSelect=document.getElementById('serviceSelect');
+    function updateTime(){document.getElementById('appTime').textContent=`日本時間: ${new Intl.DateTimeFormat(LOCALE,{timeZone:TIME_ZONE,year:'numeric',month:'long',day:'numeric',weekday:'short',hour:'2-digit',minute:'2-digit'}).format(new Date())}`;}
+    function quantityAfter(text,term){const found=text.slice(text.indexOf(term)+term.length).match(/^\s*(\d+|[一二三四五六七八九十]+)\s*(個|つ|本|ケース)?/);if(!found)return 1;const kanji={一:1,二:2,三:3,四:4,五:5,六:6,七:7,八:8,九:9,十:10};return Number(found[1])||kanji[found[1]]||1;}
+    function parseDelivery(text){const location=LOCATIONS.find((item)=>item.aliases.some((term)=>text.includes(term)));if(!location)return null;const cargoes=CARGO.map((cargo)=>{const term=cargo.terms.find((entry)=>text.includes(entry));return term?{...cargo,qty:quantityAfter(text,term)}:null;}).filter(Boolean);const cargoPt=cargoes.reduce((sum,item)=>sum+item.pt*item.qty,0),weight=cargoes.reduce((sum,item)=>sum+item.weight*item.qty,0);return {id:crypto.randomUUID(),raw:text,name:location.name,distancePt:location.pt,cargoes,cargoPt,weight,totalPt:location.pt+cargoPt};}
+    function saveRecords(){records[activeSlot]=deliveries;localStorage.setItem(STORAGE_KEY,JSON.stringify(records));}
+    function addDelivery(text){const delivery=parseDelivery(text.trim());if(!delivery){status.textContent='登録済みの配送エリアを見つけられませんでした。地名を確認してください。';return;}deliveries.push(delivery);saveRecords();input.value='';status.textContent=`${activeSlot}に${delivery.name}を追加しました。`;render();}
+    function allocations(){const result=Array.from({length:2},(_,index)=>({name:`ドライバー ${String.fromCharCode(65+index)}`,pt:0,weight:0,deliveries:[]}));[...deliveries].sort((a,b)=>b.weight-a.weight||b.totalPt-a.totalPt).forEach((delivery)=>{const target=result.reduce((least,driver)=>driver.weight<least.weight||(driver.weight===least.weight&&driver.pt<least.pt)?driver:least);target.deliveries.push(delivery);target.pt+=delivery.totalPt;target.weight+=delivery.weight;});return result;}
+    function renderList(){list.replaceChildren();document.getElementById('deliveryCount').textContent=`${deliveries.length} 件`;if(!deliveries.length){const message=document.createElement('p');message.className='empty';message.textContent='配送先を追加すると、荷物の推定重量とポイントを表示します。';list.append(message);return;}deliveries.forEach((delivery)=>{const row=document.createElement('article');row.className='delivery';const top=document.createElement('div');top.className='delivery-top';const details=document.createElement('div');const place=document.createElement('span');place.className='place';place.textContent=delivery.name;const badge=document.createElement('small');badge.textContent='自動補正済';place.append(badge);const raw=document.createElement('span');raw.className='raw';raw.textContent=`入力: ${delivery.raw}`;details.append(place,raw);const remove=document.createElement('button');remove.className='delete';remove.type='button';remove.textContent='×';remove.setAttribute('aria-label',`${delivery.name}を削除`);remove.addEventListener('click',()=>{deliveries=deliveries.filter((item)=>item.id!==delivery.id);render();});top.append(details,remove);const cargo=document.createElement('div');cargo.className='cargo';cargo.textContent=delivery.cargoes.length?`荷物: ${delivery.cargoes.map((item)=>`${item.label} ${item.qty}個`).join(' / ')}`:'荷物: 未入力';const scores=document.createElement('p');scores.className='scores';scores.textContent=`距離 ${delivery.distancePt.toFixed(1)} pt + 荷物 ${delivery.cargoPt.toFixed(1)} pt / 推定 ${delivery.weight.toFixed(1)} kg`;row.append(top,cargo,scores);list.append(row);});}
+    function renderDrivers(){const result=allocations(),totalPt=deliveries.reduce((sum,item)=>sum+item.totalPt,0),totalWeight=deliveries.reduce((sum,item)=>sum+item.weight,0);document.getElementById('totalPoints').innerHTML=`${totalPt.toFixed(1)} <small>pt</small>`;document.getElementById('totalWeight').innerHTML=`${totalWeight.toFixed(1)} <small>kg</small>`;const container=document.getElementById('drivers');container.replaceChildren();result.forEach((driver,index)=>{const card=document.createElement('section');card.className='driver';card.style.setProperty('--driver',colors[index]);const head=document.createElement('div');head.className='driver-head';head.innerHTML=`<span class="driver-name">${driver.name}</span><span class="driver-points">${driver.pt.toFixed(1)} pt</span>`;const weight=document.createElement('div');weight.className=`weight ${driver.weight>WEIGHT_LIMIT?'danger':driver.weight>WEIGHT_LIMIT*.85?'warn':'ok'}`;weight.textContent=`推定積載量: ${driver.weight.toFixed(1)} kg${driver.weight>WEIGHT_LIMIT?' (上限超過)':''}`;const route=document.createElement('ul');route.className='route';if(driver.deliveries.length)driver.deliveries.forEach((delivery)=>{const item=document.createElement('li');item.textContent=`${delivery.name} ${delivery.weight.toFixed(1)}kg`;route.append(item);});else{const item=document.createElement('li');item.className='none';item.textContent='担当なし';route.append(item);}card.append(head,weight,route);container.append(card);});}
+    function recordSummary(items){const totalPt=items.reduce((sum,item)=>sum+item.totalPt,0),totalWeight=items.reduce((sum,item)=>sum+item.weight,0);const previous=deliveries;deliveries=items;const driversForSlot=allocations();deliveries=previous;return {count:items.length,totalPt,totalWeight,drivers:driversForSlot};}
+    function renderSchedule(){const body=document.getElementById('scheduleBody');body.replaceChildren();SERVICE_SLOTS.forEach((slot)=>{const summary=recordSummary(slot===activeSlot?deliveries:records[slot]||[]);const row=document.createElement('tr');const cells=[slot,String(summary.count),`${summary.totalPt.toFixed(1)} pt`,`${summary.totalWeight.toFixed(1)} kg`,`${summary.drivers[0].weight.toFixed(1)} kg`,`${summary.drivers[1].weight.toFixed(1)} kg`,summary.drivers.some((driver)=>driver.weight>WEIGHT_LIMIT)?'上限超過':'確認済み'];cells.forEach((value,index)=>{const cell=document.createElement('td');cell.textContent=value;if(index===6&&value==='上限超過')cell.className='alert';row.append(cell);});body.append(row);});}
+    function render(){renderList();renderDrivers();renderSchedule();}
+    document.getElementById('addButton').addEventListener('click',()=>addDelivery(input.value));input.addEventListener('keydown',(event)=>{if(event.key==='Enter')addDelivery(input.value);});document.querySelectorAll('[data-example]').forEach((button)=>button.addEventListener('click',()=>addDelivery(button.dataset.example)));document.getElementById('clearButton').addEventListener('click',()=>{deliveries=[];saveRecords();status.textContent=`${activeSlot}を消去しました。`;render();});serviceSelect.addEventListener('change',()=>{saveRecords();activeSlot=serviceSelect.value;deliveries=records[activeSlot]||[];status.textContent=`${activeSlot}を表示中です。`;render();});
+    const dialog=document.getElementById('manualDialog');document.getElementById('manualButton').addEventListener('click',()=>dialog.showModal());document.getElementById('closeManual').addEventListener('click',()=>dialog.close());
+    const mic=document.getElementById('micButton'),Recognition=window.SpeechRecognition||window.webkitSpeechRecognition;if(Recognition){const recognition=new Recognition();recognition.lang=LOCALE;recognition.interimResults=false;recognition.addEventListener('start',()=>{mic.classList.add('listening');mic.textContent='聞取中';status.textContent='住所と荷物を話してください。';});recognition.addEventListener('end',()=>{mic.classList.remove('listening');mic.textContent='音声';});recognition.addEventListener('result',(event)=>addDelivery(event.results[0][0].transcript));recognition.addEventListener('error',()=>{status.textContent='音声を取得できませんでした。入力欄から追加してください。';});mic.addEventListener('click',()=>recognition.start());}else{mic.disabled=true;mic.title='このブラウザでは音声入力を利用できません';}
+    updateTime();setInterval(updateTime,30000);render();
+  </script>
+</body>
+</html>
