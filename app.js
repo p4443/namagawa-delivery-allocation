@@ -1,5 +1,18 @@
 const KEY = 'delivery-desk-v4';
 const SHARED_STATE_URL = '/api/state';
+const manualStyle = document.createElement('style');
+manualStyle.textContent = `.app-footer{margin-top:18px;padding:14px 0 4px;border-top:1px solid var(--line);text-align:center}.manual-dialog{width:min(620px,calc(100% - 24px));max-height:84vh;border:0;border-radius:8px;padding:0;color:var(--ink);box-shadow:0 22px 60px rgba(20,40,45,.28)}.manual-dialog::backdrop{background:rgba(20,40,45,.48)}.manual-content{padding:20px}.manual-content h2{font-size:1.1rem}.manual-content h3{margin:18px 0 6px}.manual-content p,.manual-content li{font-size:.8rem;line-height:1.65}.manual-content ol{padding-left:20px}.manual-close{float:right}@media(max-width:540px){.manual-content{padding:17px}.manual-content p,.manual-content li{font-size:.84rem}}@media print{.app-footer,.manual-dialog{display:none!important}}`;
+document.head.append(manualStyle);
+const manualDialog = document.createElement('dialog');
+manualDialog.className = 'manual-dialog';
+manualDialog.innerHTML = `<div class="manual-content"><button class="btn manual-close" type="button">閉じる</button><h2>運用マニュアル</h2><h3>配送を追加</h3><ol><li>稼働日と便を選び、住所・荷物・走行距離を入力または音声入力します。</li><li>走行距離は「12.5km」のように入力できます。Google Maps の「地図」で住所と経路を確認してください。</li><li>追加後は重量を基準に自動配分されます。</li></ol><h3>担当と順番を調整</h3><ol><li>配送カードを担当ドライバー列へドラッグして担当を変更します。</li><li>「上へ」「下へ」で配送順を変更します。</li><li>重量が上限を超えた列は警告表示されます。</li></ol><h3>配送中の更新</h3><ol><li>カードの状態を「配達完了」「不在」「持ち戻り」に更新します。</li><li>住所や荷物の認識が違うときは「編集・再解析」を使います。</li><li>走行距離欄は手入力でいつでも修正できます。</li></ol><h3>端末間共有</h3><p>A・Bが同じ公開URLを開くと、担当・順番・重量・距離・状態が約3秒ごとに共有されます。</p><h3>締め作業</h3><p>CSV出力または印刷で当日の便を保存します。店舗拠点・ドライバー・荷物マスタは「拠点・運用設定」から変更できます。</p></div>`;
+document.body.append(manualDialog);
+manualDialog.querySelector('.manual-close').onclick = () => manualDialog.close();
+const footer = document.createElement('footer');
+footer.className = 'app-footer';
+footer.innerHTML = '<button class="btn" type="button">運用マニュアル</button>';
+footer.querySelector('button').onclick = () => manualDialog.showModal();
+document.querySelector('.shell').append(footer);
 const driverTheme = document.createElement('style');
 driverTheme.textContent = `
   .column.driver-a .chead { background:#eaf2ff; border-bottom:3px solid #3377e8; } .column.driver-a .cap { color:#2056b7; } .column.driver-a .card { border-left-color:#3377e8; }
