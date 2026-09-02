@@ -1,12 +1,9 @@
 services:
   - type: web
-    name: namagawa-delivery-allocation
+    name: namegawa-delivery-allocation
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn --bind 0.0.0.0:$PORT app:app
-    envVars:
-      - key: GOOGLE_MAPS_API_KEY
-        sync: false
     disk:
       name: delivery-records
       mountPath: /var/data
