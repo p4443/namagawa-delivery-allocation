@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import os
 import tempfile
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 from pathlib import Path
 from threading import Lock
 
@@ -12,6 +14,8 @@ app = Flask(__name__, static_folder=".", static_url_path="")
 data_lock = Lock()
 data_file = Path(os.environ.get("RECORDS_FILE", "/var/data/delivery-records.json"))
 MAX_STATE_BYTES = 1_000_000
+ROUTES_API_URL = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
+MAX_ROUTE_STOPS = 18
 
 
 def load_state() -> dict:
@@ -48,9 +52,49 @@ def put_state():
     return jsonify(payload)
 
 
+@app.post("/api/route-matrix")
+def route_matrix():
+    payload = request.get_json(silent=True)
+    origin = payload.get("origin") if isinstance(payload, dict) else None
+    destinations = payload.get("destinations") if isinstance(payload, dict) else None
+    if not isinstance(origin, str) or not origin.strip() or not isinstance(destinations, list):
+        return jsonify(error="店舗拠点と配送先を指定してください。"), 400
+    if not 2 <= len(destinations) <= MAX_ROUTE_STOPS or not all(isinstance(address, str) and address.strip() for address in destinations):
+        return jsonify(error=f"配送先は2件から{MAX_ROUTE_STOPS}件まで指定してください。"), 400
+    api_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    if not api_key:
+        return jsonify(error="Google Maps Routes APIキーが設定されていません。"), 503
+
+    locations = [origin, *destinations]
+    waypoints = [{"waypoint": {"address": address}} for address in locations]
+    body = json.dumps({"origins": waypoints, "destinations": waypoints, "travelMode": "DRIVE", "routingPreference": "TRAFFIC_AWARE"}).encode("utf-8")
+    api_request = Request(ROUTES_API_URL, data=body, headers={"Content-Type": "application/json", "X-Goog-Api-Key": api_key, "X-Goog-FieldMask": "originIndex,destinationIndex,distanceMeters,condition"}, method="POST")
+    try:
+        with urlopen(api_request, timeout=20) as response:
+            entries = json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        return jsonify(error=f"Routes APIエラー: {error.code}"), 502
+    except (URLError, TimeoutError, json.JSONDecodeError):
+        return jsonify(error="Routes APIから道路距離を取得できませんでした。"), 502
+    if not isinstance(entries, list):
+        return jsonify(error="Routes APIの応答形式が不正です。"), 502
+
+    size = len(locations)
+    matrix = [[None] * size for _ in range(size)]
+    for entry in entries:
+        origin_index = entry.get("originIndex")
+        destination_index = entry.get("destinationIndex")
+        distance = entry.get("distanceMeters")
+        if isinstance(origin_index, int) and isinstance(destination_index, int) and 0 <= origin_index < size and 0 <= destination_index < size and isinstance(distance, int):
+            matrix[origin_index][destination_index] = distance
+    if any(distance is None for row in matrix for distance in row):
+        return jsonify(error="道路経路が見つからない配送先があります。住所を確認してください。"), 422
+    return jsonify(matrix=matrix)
+
+
 @app.get("/")
 def index():
-    return send_from_directory(app.static_folder, "index.html")
+    return send_from_directory(app.static_folder or ".", "index.html")
 
 
 @app.get("/favicon.ico")
