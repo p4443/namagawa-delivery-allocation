@@ -8,23 +8,46 @@ const manualStyle = document.createElement('style');
 manualStyle.textContent = `.app-footer{margin-top:18px;padding:14px 0 4px;border-top:1px solid var(--line);text-align:center}.manual-dialog{width:min(640px,calc(100% - 24px));max-height:84vh;border:0;border-radius:8px;padding:0;color:var(--ink);box-shadow:0 22px 60px rgba(20,40,45,.28)}.manual-dialog::backdrop{background:rgba(20,40,45,.48)}.manual-content{padding:20px}.manual-content h2{font-size:1.1rem;color:var(--teal)}.manual-content h3{margin:16px 0 6px;font-size:.95rem;border-bottom:1px solid var(--line);padding-bottom:4px}.manual-content p,.manual-content li{font-size:.82rem;line-height:1.65}.manual-content ol{padding-left:20px}.manual-close{float:right}@media(max-width:540px){.manual-content{padding:17px}}@media print{.app-footer,.manual-dialog{display:none!important}}`;
 document.head.append(manualStyle);
 
+// 拠点変更ダイアログ専用スタイル・DOM構造
+const originStyle = document.createElement('style');
+originStyle.textContent = `.origin-dialog{width:min(540px,calc(100% - 24px));border:0;border-radius:8px;padding:20px;color:var(--ink);box-shadow:0 22px 60px rgba(20,40,45,.28)}.origin-dialog::backdrop{background:rgba(20,40,45,.48)}.origin-dialog h2{margin:0 0 12px;font-size:1.1rem;color:var(--teal)}.origin-dialog select,.origin-dialog input{width:100%;margin-bottom:10px}`;
+document.head.append(originStyle);
+
+const originDialog = document.createElement('dialog');
+originDialog.className = 'origin-dialog';
+originDialog.innerHTML = `<button class="btn manual-close" type="button" style="float:right">閉じる</button>
+<h2>📍 店舗拠点の変更・管理</h2>
+<p style="font-size:.78rem;color:var(--muted);margin:0 0 12px">配送の出発・帰還地点となる店舗拠点を選択・切り替えできます。</p>
+<label style="font-size:.72rem;font-weight:bold;color:var(--muted)">登録済み拠点から切り替え</label>
+<select id="originSelect" style="margin-top:4px"></select>
+<button class="btn primary" id="switchOriginBtn" type="button" style="width:100%;margin-bottom:16px">この拠点に変更する</button>
+<hr style="border:0;border-top:1px solid var(--line);margin:16px 0">
+<h3 style="font-size:.95rem;margin:0 0 8px">新しい店舗拠点を登録</h3>
+<p class="field"><label>店舗名</label><input id="newOriginName" placeholder="例: ベイシア坂戸店"></p>
+<p class="field"><label>店舗住所</label><input id="newOriginAddress" placeholder="例: 埼玉県坂戸市八幡1-3-22"></p>
+<button class="btn" id="addOriginBtn" type="button" style="width:100%">新規拠点を登録して適用</button>`;
+document.body.append(originDialog);
+originDialog.querySelector('.manual-close').onclick = () => originDialog.close();
+
 const manualDialog = document.createElement('dialog');
 manualDialog.className = 'manual-dialog';
 manualDialog.innerHTML = `<div class="manual-content">
 <button class="btn manual-close" type="button">閉じる</button>
 <h2>配送運用デスク 運用マニュアル</h2>
-<h3>1. 音声入力と自動解析能力の向上</h3>
+<h3>1. 店舗拠点の変更</h3>
+<p>画面右上の「📍 拠点変更」ボタンまたは設定画面から、配送の起点となる店舗拠点を選択・登録・即時切り替えできます。</p>
+<h3>2. 音声入力と自動解析能力</h3>
 <p>「🎤 音声」ボタンを押して「坂戸市千代田1-2 コンテナ大2個 クーラー小ひとつ」のように話しかけてください。「ひとつ」「ふたつ」等の音声特有の数詞や「かける」「ケース」「箱」も自動識別されます。</p>
-<h3>2. 店舗拠点発着の最適ルート・AB配分</h3>
+<h3>3. 店舗拠点発着の最適ルート・AB配分</h3>
 <ol>
 <li>対象便の配送先を追加します。</li>
 <li>「店舗拠点発着 最適ルート・AB配分を施行」を押すと、Google Maps APIより道路距離を取得します。</li>
-<li>店舗（拠点）を出発し、すべての配送先を巡回して店舗へ帰還する最短巡回ルート（TSP）を自前計算します。</li>
+<li>選択された店舗拠点を出発し、すべての配送先を巡回して店舗へ帰還する最短巡回ルート（TSP）を自前計算します。</li>
 <li>ドライバーA・B間の往復走破距離および負担が均等になるよう自動配分し、巡回順（①, ②, ③…）に並べ替えます。</li>
 </ol>
-<h3>3. 一括Google Maps巡回ナビ</h3>
+<h3>4. 一括Google Maps巡回ナビ</h3>
 <p>配分後、ドライバー列のヘッダーに表示される「🗺️ 一括巡回ナビ」を押すと、店舗発〜経由地〜店舗帰還までの全ルートがGoogle Mapsに一括読み込みされます。</p>
-<h3>4. 担当・状態の調整と端末共有</h3>
+<h3>5. 担当・状態の調整と端末共有</h3>
 <p>カードをドラッグ＆ドロップして手動移動したり、「上へ」「下へ」で順番を微調整できます。設定・実走状態はリアルタイムに端末間で共有されます。</p>
 </div>`;
 document.body.append(manualDialog);
@@ -47,6 +70,9 @@ document.head.append(driverTheme);
 
 const defaults = {
   origin: { name: 'ベイシアなめがわモール店', address: '埼玉県比企郡滑川町羽尾2780' },
+  origins: [
+    { id: 'default', name: 'ベイシアなめがわモール店', address: '埼玉県比企郡滑川町羽尾2780' }
+  ],
   drivers: [{ id: 'a', name: 'ドライバー A', limit: 350 }, { id: 'b', name: 'ドライバー B', limit: 350 }],
   master: [
     { id: 'water', label: '飲料ケース', terms: ['水', '飲料', 'ドリンク', 'お茶', 'ケース'], pt: 2, weight: 13 },
@@ -68,9 +94,19 @@ let draggedId = null;
 let remoteRevision = Number(state.revision) || 0;
 const sharedMode = location.protocol === 'http:' || location.protocol === 'https:';
 
+function ensureOrigins() {
+  state.origins ??= [];
+  if (!state.origins.length && state.origin) {
+    state.origins.push({ id: crypto.randomUUID(), name: state.origin.name, address: state.origin.address });
+  } else if (!state.origins.some(o => o.name === state.origin.name && o.address === state.origin.address)) {
+    state.origins.push({ id: crypto.randomUUID(), name: state.origin.name, address: state.origin.address });
+  }
+}
+
 function isSharedState(value) { return value && typeof value === 'object' && value.origin && Array.isArray(value.drivers) && Array.isArray(value.master) && value.days && typeof value.days === 'object'; }
 
 function save() {
+  ensureOrigins();
   localStorage.setItem(KEY, JSON.stringify(state));
   if (sharedMode) void saveSharedState();
 }
@@ -120,7 +156,6 @@ function totals(items) {
   return items.reduce((result, item) => ({ pt: result.pt + item.totalPt, weight: result.weight + item.weight }), { pt: 0, weight: 0 });
 }
 
-// 改善された音声・テキスト正規化処理
 function normalizeSpeechText(rawText) {
   if (!rawText) return '';
   let text = String(rawText).trim();
@@ -361,7 +396,7 @@ async function optimizeRoutes() {
 
     save();
     render();
-    $('message').textContent = `店舗起点で最適巡回ルート・AB配分を完了しました！ (A: ${(bestPlan.tspA.meters / 1000).toFixed(1)} km / B: ${(bestPlan.tspB.meters / 1000).toFixed(1)} km)`;
+    $('message').textContent = `[${state.origin.name}] 起点で最適巡回ルート・AB配分を完了しました！ (A: ${(bestPlan.tspA.meters / 1000).toFixed(1)} km / B: ${(bestPlan.tspB.meters / 1000).toFixed(1)} km)`;
   } catch (error) {
     $('message').textContent = error.message;
   } finally {
@@ -435,7 +470,26 @@ function card(item) {
   return element;
 }
 
+function openOriginModal() {
+  ensureOrigins();
+  const select = $('originSelect');
+  select.replaceChildren();
+  state.origins.forEach((o) => {
+    const opt = document.createElement('option');
+    opt.value = o.id || o.name;
+    opt.textContent = `${o.name} (${o.address})`;
+    if (o.name === state.origin.name && o.address === state.origin.address) {
+      opt.selected = true;
+    }
+    select.append(opt);
+  });
+  $('newOriginName').value = '';
+  $('newOriginAddress').value = '';
+  originDialog.showModal();
+}
+
 function render() {
+  ensureOrigins();
   const items = deliveries(), total = totals(items);
   $('date').value = workDate;
   $('slot').value = slot;
@@ -660,6 +714,40 @@ $('copy').onclick = copyPrevious;
 $('csv').onclick = csv;
 $('print').onclick = () => print();
 $('optimizeRoutes').onclick = optimizeRoutes;
+
+const changeOriginBtn = $('changeOriginBtn');
+if (changeOriginBtn) {
+  changeOriginBtn.onclick = openOriginModal;
+}
+
+$('switchOriginBtn').onclick = () => {
+  const selectVal = $('originSelect').value;
+  const target = state.origins.find(o => o.id === selectVal || o.name === selectVal);
+  if (target) {
+    state.origin = { name: target.name, address: target.address };
+    save();
+    render();
+    originDialog.close();
+    $('message').textContent = `店舗拠点を [${target.name}] に変更しました。`;
+  }
+};
+
+$('addOriginBtn').onclick = () => {
+  const name = $('newOriginName').value.trim();
+  const address = $('newOriginAddress').value.trim();
+  if (!name || !address) {
+    alert('店舗名と住所を入力してください。');
+    return;
+  }
+  const newOrigin = { id: crypto.randomUUID(), name, address };
+  state.origins.push(newOrigin);
+  state.origin = { name, address };
+  save();
+  render();
+  originDialog.close();
+  $('message').textContent = `新規拠点を登録し、[${name}] に変更しました。`;
+};
+
 $('openSettings').onclick = () => {
   $('settings').hidden = false;
   $('shopName').value = state.origin.name;
